@@ -1,66 +1,68 @@
-## Foundry
+## MEV Arbitrage Bot (Sepolia) — Foundry + Node.js
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Objectif : démontrer un arbitrage MEV complet sur Sepolia avec :
+- un AMM minimal à deux pools (écart de prix),
+- un contrat d’exécution atomique,
+- un bot off-chain qui observe, calcule, exécute.
 
-Foundry consists of:
+### Rappel théorique (MEV, Flashbots, Dark Forest)
+**Définition MEV** : “valeur extractible par un producteur de bloc en manipulant l’ordre / l’inclusion des transactions.”
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+**Pourquoi c’est important**
+- Les opportunités MEV proviennent de l’ordre des transactions (arbitrage, liquidations, mint, airdrops).
+- La mempool est un “dark forest” : tout le monde observe, copie et surenchérit.
+- Résultat : gas wars, échecs de transactions, et extraction invisible de valeur.
 
-## Documentation
+**Flashbots (idée clé)**
+- Envoie de “bundles” : transactions ordonnées, invisibles à la mempool publique.
+- Gas price = 0 dans les bundles, et le mineur est payé via un transfert on-chain.
+- Le mineur n’est payé que si tout le bundle est inclus et exécuté correctement.
+- Réduit les “bidding wars” et les transactions échouées.
 
-https://book.getfoundry.sh/
+**Exemples marquants (cours)**
+- Maker 2020 (“heist”) : congestion + liquidation, bots gagnent en bloquant la concurrence.
+- Sandwiching : front-run + back-run autour d’un swap pour extraire un profit.
+- Salmonella : piège anti-sandwich (token invendable pour le bot).
 
-## Usage
+### Positionnement du projet
+Ce repo se concentre sur :
+- un **arbitrage on-chain atomique**,
+- un **bot off-chain searcher** (détection + exécution),
+- un **déploiement Sepolia** avec preuve d’exécution.
 
-### Build
+Flashbots et bundles peuvent être ajoutés en extension, mais le cœur pédagogique est déjà respecté.
 
-```shell
-$ forge build
+### Architecture
+- `DualPoolAMM.sol` : AMM simple avec 2 pools indépendants.
+- `ArbExecutor.sol` : contrat qui fait l’arbitrage en une transaction.
+- `MockUSD6.sol` / `MockUSD18.sol` : tokens de test.
+- `DeployAll.s.sol` : déploiement + seed des pools.
+- `RunArb.s.sol` : exécution d’arbitrage on-chain.
+
+### Prérequis
+- Foundry
+- Node.js (pour le bot)
+- Sepolia ETH + RPC
+
+### Installation
+```bash
+forge install
 ```
 
-### Test
-
-```shell
-$ forge test
+### Config
+Créer un `.env` :
+```env
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+PRIVATE_KEY=0x...
 ```
 
-### Format
-
-```shell
-$ forge fmt
+### Déploiement
+```bash
+forge script script/DeployAll.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --private-key $PRIVATE_KEY
 ```
 
-### Gas Snapshots
-
-```shell
-$ forge snapshot
-```
-
-### Anvil
-
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+### Exécution on-chain
+Remplir les adresses dans `script/RunArb.s.sol`, puis :
+```bash
+forge script script/RunArb.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --private-key $PRIVATE_KEY
 ```
